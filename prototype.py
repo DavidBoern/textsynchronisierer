@@ -118,9 +118,6 @@ class Levenshtein():
         return self._cycled(s1, s2)
     
     
-
-
-
 class Kostenfunktion():
     def __init__(self):
         self.aehnlichkeitsmass = {}
@@ -131,23 +128,32 @@ class Kostenfunktion():
             dict_Werte[key]=dict_Werte[key]*faktor
         return dict_Werte       
     
-    def berechneTokenDistanzen(self, token_Set):
+    def erstelleTokenpaare(self, token_List1, token_List2):
+        eindeutigeToken = sorted(set(token_List1 + token_List2))
+        tokenKombinationen = itertools.combinations(eindeutigeToken,2)
+        return tokenKombinationen                              
+                
+      
+    def berechneTokenDistanzen(self, token_List1, token_List2):
         levenshtein = Levenshtein()
-        tokenKombinationen = list(itertools.combinations(sorted(token_Set), 2))
-        print (tokenKombinationen)
+        tokenKombinationen = self.erstelleTokenpaare(token_List1,token_List2)
         for tupel in tokenKombinationen:
-            self.aehnlichkeitsmass.update({tupel:levenshtein._cycled(tupel[0], tupel[1])/max(len(tupel[0]),len(tupel[1]))})        
-        self.aehnlichkeitsmass = self.normiereKostenFunktion(self.aehnlichkeitsmass)
+            self.aehnlichkeitsmass.update({tupel:(levenshtein._cycled(tupel[0], tupel[1]))/(max(len(tupel[0]),len(tupel[1])))})        
+        #self.aehnlichkeitsmass = self.normiereKostenFunktion(self.aehnlichkeitsmass)
+        print (dict(sorted(self.aehnlichkeitsmass.items(), key=lambda item: item[1])))
         print (self.aehnlichkeitsmass)
         return self.aehnlichkeitsmass
          
-# tokenSet = {"Beate", "Lea", "Bea", "Beatka", "Juli", "Oli"}            
-# k = Kostenfunktion()
-# individuelleErsetzungskosten = k.berechneTokenDistanzen(tokenSet)
-
-b = Levenshtein ()
+            
+k = Kostenfunktion()
 tokenliste1 = ["danke", "volker", "dazu", "gekommen", "bist", "nachdem", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "und", "80er", "jahre", "in", "münster", "und", "die", "auseinandersetzung", "um", "die", "frauenstraße", "und", "das", "studentische", "leben, ", "die", "auseinandersetzungen", "an", "der", "uni", "und", "die", "wirkung", "in", "die", "stadt", "hinein", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen, ", "wie", "bist", "du", "nach", "münster", "gekommen", "wie", "ging", "es", "im", "studium", "weiter", "und", "wie", "bist", "du", "in", "kontakt", "mit", "der", "frauenstraße"]
 tokenliste2 = ["danke", "volker", "dass", "du", "gekommen", "bist, ", "nachdem", "wir", "ja", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "80er", "jahre", "in", "münster", "um", "die", "auseinandersetzung", "um", "die", "frauenstraße", "um", "das", "studentische", "leben", "an", "der", "uni, ", "aber", "auch", "die", "auseinandersetzungen", "dort", "und", "was", "im", "grunde", "genommen", "in", "die", "stadt", "hinein", "wirkte", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen", "wie", "bist", "du", "nach", "münster", "gekommen", "ja", "und", "dann", "im", "grunde", "genommen", "wie", "ging", "es", "dann", "im", "studium", "weiter", "und", "wie", "bist", "du", "dann", "auch", "in", "kontakt", "mit", "der", "frauenstraße"]
-print(f"Tokendistanz: {b.berechneDokumentDistanz (tokenliste1, tokenliste2)}")
-print (f"Länge Tokenliste 1: {len(tokenliste1)}")
-print (f"Länge Tokenliste 2: {len(tokenliste1)}")
+individuelleErsetzungskosten = k.berechneTokenDistanzen(tokenliste1, tokenliste2)
+
+
+# b = Levenshtein ()
+# tokenliste1 = ["danke", "volker", "dazu", "gekommen", "bist", "nachdem", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "und", "80er", "jahre", "in", "münster", "und", "die", "auseinandersetzung", "um", "die", "frauenstraße", "und", "das", "studentische", "leben, ", "die", "auseinandersetzungen", "an", "der", "uni", "und", "die", "wirkung", "in", "die", "stadt", "hinein", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen, ", "wie", "bist", "du", "nach", "münster", "gekommen", "wie", "ging", "es", "im", "studium", "weiter", "und", "wie", "bist", "du", "in", "kontakt", "mit", "der", "frauenstraße"]
+# tokenliste2 = ["danke", "volker", "dass", "du", "gekommen", "bist, ", "nachdem", "wir", "ja", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "80er", "jahre", "in", "münster", "um", "die", "auseinandersetzung", "um", "die", "frauenstraße", "um", "das", "studentische", "leben", "an", "der", "uni, ", "aber", "auch", "die", "auseinandersetzungen", "dort", "und", "was", "im", "grunde", "genommen", "in", "die", "stadt", "hinein", "wirkte", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen", "wie", "bist", "du", "nach", "münster", "gekommen", "ja", "und", "dann", "im", "grunde", "genommen", "wie", "ging", "es", "dann", "im", "studium", "weiter", "und", "wie", "bist", "du", "dann", "auch", "in", "kontakt", "mit", "der", "frauenstraße"]
+# print(f"Tokendistanz: {b.berechneDokumentDistanz (tokenliste1, tokenliste2)}")
+# print (f"Länge Tokenliste 1: {len(tokenliste1)}")
+# print (f"Länge Tokenliste 2: {len(tokenliste1)}")
