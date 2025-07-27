@@ -69,10 +69,7 @@ class Levenshtein():
         cols = len(s2) + 1
         prev = None
         cur: Any
-        if numpy:
-            cur = numpy.arange(cols)
-        else:
-            cur = range(cols)
+        cur = range(cols)
 
         for r in range(1, rows):
             prev, cur = cur, [r] + [0] * (cols - 1)
@@ -97,11 +94,7 @@ class Levenshtein():
         rows = len(s1) + 1
         cols = len(s2) + 1
         prev = None
-        cur: Any
-        if numpy:
-            cur = numpy.arange(cols)
-        else:
-            cur = range(cols)
+        cur = range(cols)
 
         for r in range(1, rows):
             prev, cur = cur, [r] + [0] * (cols - 1)
