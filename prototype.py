@@ -81,13 +81,10 @@ class Levenshtein():
         return self._cycled(s1, s2)
     
     
-    def berechneDokumentDistanz (self, s1: Sequence[T], s2: Sequence[T]) -> int:
-        """
-        source:
-        https://github.com/jamesturk/jellyfish/blob/master/jellyfish/_jellyfish.py#L18
-        """
-        rows = len(s1) + 1
-        cols = len(s2) + 1
+    def berechneTransformationsmatrix (self, s1: Sequence[T], s2: Sequence[T]) -> int:
+
+        rows = len([c for c in s1 if c != "|"]) + 1
+        cols = len(s2) + 1 
         prev = None
         cur = range(cols)
         transformationsprotokoll = [[None for _ in range(cols)] for _ in range(rows)]
@@ -99,22 +96,25 @@ class Levenshtein():
             i=i+1
         while j<rows:
             transformationsprotokoll [j][0] = "d"
-            j=j+1      
-
-        for r in range(1, rows):
-            prev, cur = cur, [r] + [0] * (cols - 1)
-            for c in range(1, cols):
+            j=j+1 
+        r_matrix = 1
+        for r_sequenz in range(len(s1)):
+            if s1[r_sequenz] == "|": 
+                continue          
+            prev, cur = cur, [r_matrix] + [0] * (cols - 1)
+            for c in range(1, cols):              
                 deletion = prev[c] + 1
                 insertion = cur[c - 1] + 1
-                dist = self.test_func(s1[r - 1], s2[c - 1])
+                dist = self.test_func(s1[r_sequenz], s2[c - 1])
                 edit = prev[c - 1] + (not dist)
                 cur[c] = min(edit, deletion, insertion)
                 if cur[c] == edit:
-                    transformationsprotokoll[r][c] = "e"
+                    transformationsprotokoll[r_matrix][c] = "e"
                 elif cur[c] == deletion:
-                    transformationsprotokoll[r][c] = "d"
+                    transformationsprotokoll[r_matrix][c] = "d"
                 else:
-                    transformationsprotokoll[r][c] = "i"
+                    transformationsprotokoll[r_matrix][c] = "i"
+            r_matrix +=1
         for zeile in transformationsprotokoll:   # nur zum Test
             print (zeile)  # nur zum Test
         return transformationsprotokoll
@@ -123,7 +123,9 @@ class Levenshtein():
     def __call__(self, s1: Sequence[T], s2: Sequence[T]) -> int:
         s1, s2 = self._get_sequences(s1, s2)
         return self._cycled(s1, s2)
-    
+
+#class berechneDokumentDistanz:
+
     
 class Kostenfunktion():
     def __init__(self):
@@ -159,11 +161,13 @@ class Kostenfunktion():
 
 
 b = Levenshtein ()
-# tokenliste1 = ["danke", "volker", "dazu", "gekommen", "bist", "nachdem", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "und", "80er", "jahre", "in", "münster", "und", "die", "auseinandersetzung", "um", "die", "frauenstraße", "und", "das", "studentische", "leben, ", "die", "auseinandersetzungen", "an", "der", "uni", "und", "die", "wirkung", "in", "die", "stadt", "hinein", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen, ", "wie", "bist", "du", "nach", "münster", "gekommen", "wie", "ging", "es", "im", "studium", "weiter", "und", "wie", "bist", "du", "in", "kontakt", "mit", "der", "frauenstraße"]
-# tokenliste2 = ["danke", "volker", "dass", "du", "gekommen", "bist, ", "nachdem", "wir", "ja", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "80er", "jahre", "in", "münster", "um", "die", "auseinandersetzung", "um", "die", "frauenstraße", "um", "das", "studentische", "leben", "an", "der", "uni, ", "aber", "auch", "die", "auseinandersetzungen", "dort", "und", "was", "im", "grunde", "genommen", "in", "die", "stadt", "hinein", "wirkte", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen", "wie", "bist", "du", "nach", "münster", "gekommen", "ja", "und", "dann", "im", "grunde", "genommen", "wie", "ging", "es", "dann", "im", "studium", "weiter", "und", "wie", "bist", "du", "dann", "auch", "in", "kontakt", "mit", "der", "frauenstraße"]
-tokenliste1 = "fortschritte"
-tokenliste2 = "schreibstifte" 
-b.berechneDokumentDistanz (tokenliste1, tokenliste2)
-# print(f"Tokendistanz: {b.berechneDokumentDistanz (tokenliste1, tokenliste2)}")
+#tokenliste1 = "Fahr|ra|d"
+#tokenliste2 = "Laufrad" 
+tokenliste1 = ["danke", "volker", "dazu", "gekommen", "bist", "nachdem", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "und", "80er", "jahre", "in", "münster", "und", "die"]
+tokenliste2 = ["danke", "volker", "dass", "du", "gekommen", "bist, ", "nachdem", "wir", "ja", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "80er", "jahre", "in", "münster", "um", "die"]
+#tokenliste1 = ["danke", "volker", "dazu", "gekommen", "bist", "nachdem", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "und", "80er", "jahre", "in", "münster", "und", "die", "auseinandersetzung", "um", "die", "frauenstraße", "und", "das", "studentische", "leben, ", "die", "auseinandersetzungen", "an", "der", "uni", "und", "die", "wirkung", "in", "die", "stadt", "hinein", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen, ", "wie", "bist", "du", "nach", "münster", "gekommen", "wie", "ging", "es", "im", "studium", "weiter", "und", "wie", "bist", "du", "in", "kontakt", "mit", "der", "frauenstraße"]
+#tokenliste2 = ["danke", "volker", "dass", "du", "gekommen", "bist, ", "nachdem", "wir", "ja", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "80er", "jahre", "in", "münster", "um", "die", "auseinandersetzung", "um", "die", "frauenstraße", "um", "das", "studentische", "leben", "an", "der", "uni, ", "aber", "auch", "die", "auseinandersetzungen", "dort", "und", "was", "im", "grunde", "genommen", "in", "die", "stadt", "hinein", "wirkte", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen", "wie", "bist", "du", "nach", "münster", "gekommen", "ja", "und", "dann", "im", "grunde", "genommen", "wie", "ging", "es", "dann", "im", "studium", "weiter", "und", "wie", "bist", "du", "dann", "auch", "in", "kontakt", "mit", "der", "frauenstraße"]
+b.berechneTransformationsmatrix (tokenliste1, tokenliste2)
+# print(f"Tokendistanz: {b.berechneTransformationsmatrix (tokenliste1, tokenliste2)}")
 # print (f"Länge Tokenliste 1: {len(tokenliste1)}")
 # print (f"Länge Tokenliste 2: {len(tokenliste1)}")
