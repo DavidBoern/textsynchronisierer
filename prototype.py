@@ -83,7 +83,7 @@ class Levenshtein():
     
     def berechneTransformationsmatrix (self, s1: Sequence[T], s2: Sequence[T]) -> int:
 
-        rows = len([c for c in s1 if c != "|"]) + 1
+        rows = len([c for c in s1 if c != "|"]) + 1 # List comprehension
         cols = len(s2) + 1 
         prev = None
         cur = range(cols)
@@ -124,7 +124,25 @@ class Levenshtein():
         s1, s2 = self._get_sequences(s1, s2)
         return self._cycled(s1, s2)
 
-#class berechneDokumentDistanz:
+class Tokenuebertragung:
+    def uebertrageToken(self, s1: Sequence[T], s2: Sequence[T], transformationsprotokoll: list[list[str]]):
+        r_matrix = len (transformationsprotokoll)
+        r_sequenz = len(s1)
+        i = 0  # ab hier nochmal Indexpositionen checken
+        j = 0      
+        match transformationsprotokoll[i][j]:
+            case "e":
+                s1[i] = s2[j]
+            case "d":
+                s1.pop(i)
+
+
+
+        rows = len([c for c in s1 if c != "|"]) + 1
+        cols = len(s2) + 1
+
+        return s1_corrected
+
 
     
 class Kostenfunktion():
