@@ -126,24 +126,33 @@ class Levenshtein():
 
 class Tokenuebertragung:
     def uebertrageToken(self, s1: Sequence[T], s2: Sequence[T], transformationsprotokoll: list[list[str]]):
-        r_matrix = len (transformationsprotokoll)
-        r_sequenz = len(s1)
-        i = 0  # ab hier nochmal Indexpositionen checken
-        j = 0      
-        match transformationsprotokoll[i][j]:
+#braucht man das?        rows = len([c for c in s1 if c != "|"]) + 1 # List comprehension
+#braucht man das?        cols = len(s2) + 1 
+        s1 = list (s1) # nur jetzt bei den Strings im Test
+        row_sequenz = len(s1)
+        row_matrix = len([c for c in s1 if c != "|"]) # List comprehension
+        col = len(s2)
+        self.syncSchrittAusfuehren (s1, s2, transformationsprotokoll, row_sequenz, row_matrix, col)
+        print (s1)       
+    def syncSchrittAusfuehren (self, s1: Sequence[T], s2: Sequence[T], transformationsprotokoll: list[list[str]], row_sequenz, row_matrix, col):
+        while s1[row_sequenz-1]=="|": row_sequenz -=1
+        match transformationsprotokoll[row_matrix][col]:
             case "e":
-                s1[i] = s2[j]
+                s1[row_sequenz-1] = s2 [col-1] # Wenn Wort z.B. 4 Zeichen lang, dann ist die letzte Stelle Index =3
+                row_sequenz -= 1
+                row_matrix -= 1
+                col -= 1
             case "d":
-                s1.pop(i)
-
-
-
-        rows = len([c for c in s1 if c != "|"]) + 1
-        cols = len(s2) + 1
-
-        return s1_corrected
-
-
+                s1.pop(row_sequenz-1)
+                row_sequenz -= 1
+                row_matrix -= 1
+            case "i":
+                s1.insert(row_sequenz -1, s2[col])
+                col -=1
+        while row_sequenz != 0 and row_matrix != 0 and col != 0:
+            self.syncSchrittAusfuehren(s1, s2, transformationsprotokoll, row_sequenz, row_matrix, col)
+        return s1
+        
     
 class Kostenfunktion():
     def __init__(self):
@@ -171,21 +180,32 @@ class Kostenfunktion():
         print (self.aehnlichkeitsmass)
         return self.aehnlichkeitsmass
          
-            
+
+t = Tokenuebertragung()
+s1 = "KRO|N|E"
+s2 = "KIRCHE"
+tp1 = [["0","i","i","i","i","i","i"],
+       ["d","e","i","i","i","i","i"],
+       ["d","e","i","e","i","i","i"],
+       ["d","e","i","i","e","i","i"],
+       ["d","e","i","i","i","e","i"],
+       ["d","e","i","i","i","i","e"]]
+t.uebertrageToken(s1,s2,tp1)
 # k = Kostenfunktion()
 # tokenliste1 = ["danke", "volker", "dazu", "gekommen", "bist", "nachdem", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "und", "80er", "jahre", "in", "münster", "und", "die", "auseinandersetzung", "um", "die", "frauenstraße", "und", "das", "studentische", "leben, ", "die", "auseinandersetzungen", "an", "der", "uni", "und", "die", "wirkung", "in", "die", "stadt", "hinein", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen, ", "wie", "bist", "du", "nach", "münster", "gekommen", "wie", "ging", "es", "im", "studium", "weiter", "und", "wie", "bist", "du", "in", "kontakt", "mit", "der", "frauenstraße"]
 # tokenliste2 = ["danke", "volker", "dass", "du", "gekommen", "bist, ", "nachdem", "wir", "ja", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "80er", "jahre", "in", "münster", "um", "die", "auseinandersetzung", "um", "die", "frauenstraße", "um", "das", "studentische", "leben", "an", "der", "uni, ", "aber", "auch", "die", "auseinandersetzungen", "dort", "und", "was", "im", "grunde", "genommen", "in", "die", "stadt", "hinein", "wirkte", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen", "wie", "bist", "du", "nach", "münster", "gekommen", "ja", "und", "dann", "im", "grunde", "genommen", "wie", "ging", "es", "dann", "im", "studium", "weiter", "und", "wie", "bist", "du", "dann", "auch", "in", "kontakt", "mit", "der", "frauenstraße"]
 # individuelleErsetzungskosten = k.berechneTokenDistanzen(tokenliste1, tokenliste2)
 
-
-b = Levenshtein ()
+#b = Levenshtein ()
 #tokenliste1 = "Fahr|ra|d"
 #tokenliste2 = "Laufrad" 
-tokenliste1 = ["danke", "volker", "dazu", "gekommen", "bist", "nachdem", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "und", "80er", "jahre", "in", "münster", "und", "die"]
-tokenliste2 = ["danke", "volker", "dass", "du", "gekommen", "bist, ", "nachdem", "wir", "ja", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "80er", "jahre", "in", "münster", "um", "die"]
+#tokenliste1 = ["danke", "volker", "dazu", "gekommen", "bist", "nachdem", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "und", "80er", "jahre", "in", "münster", "und", "die"]
+#tokenliste2 = ["danke", "volker", "dass", "du", "gekommen", "bist, ", "nachdem", "wir", "ja", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "80er", "jahre", "in", "münster", "um", "die"]
 #tokenliste1 = ["danke", "volker", "dazu", "gekommen", "bist", "nachdem", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "und", "80er", "jahre", "in", "münster", "und", "die", "auseinandersetzung", "um", "die", "frauenstraße", "und", "das", "studentische", "leben, ", "die", "auseinandersetzungen", "an", "der", "uni", "und", "die", "wirkung", "in", "die", "stadt", "hinein", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen, ", "wie", "bist", "du", "nach", "münster", "gekommen", "wie", "ging", "es", "im", "studium", "weiter", "und", "wie", "bist", "du", "in", "kontakt", "mit", "der", "frauenstraße"]
 #tokenliste2 = ["danke", "volker", "dass", "du", "gekommen", "bist, ", "nachdem", "wir", "ja", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "80er", "jahre", "in", "münster", "um", "die", "auseinandersetzung", "um", "die", "frauenstraße", "um", "das", "studentische", "leben", "an", "der", "uni, ", "aber", "auch", "die", "auseinandersetzungen", "dort", "und", "was", "im", "grunde", "genommen", "in", "die", "stadt", "hinein", "wirkte", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen", "wie", "bist", "du", "nach", "münster", "gekommen", "ja", "und", "dann", "im", "grunde", "genommen", "wie", "ging", "es", "dann", "im", "studium", "weiter", "und", "wie", "bist", "du", "dann", "auch", "in", "kontakt", "mit", "der", "frauenstraße"]
-b.berechneTransformationsmatrix (tokenliste1, tokenliste2)
+
+#b.berechneTransformationsmatrix (tokenliste1, tokenliste2)
+
 # print(f"Tokendistanz: {b.berechneTransformationsmatrix (tokenliste1, tokenliste2)}")
 # print (f"Länge Tokenliste 1: {len(tokenliste1)}")
 # print (f"Länge Tokenliste 2: {len(tokenliste1)}")
