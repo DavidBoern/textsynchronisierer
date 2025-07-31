@@ -6,9 +6,30 @@ from itertools import zip_longest
 from typing import Any, Sequence, TypeVar
 
 import itertools
-import pandas as pdd
+import pandas as pd
 
 T = TypeVar('T')
+
+class ASRExtrakt:
+    def __init__(self,pfad):
+        self.pfad = pfad
+        self.df = pd.read_csv(pfad, sep='\t', header = 0)
+        self.asrExtraktText = self.df.iloc[:,2].astype(str).tolist()[1:]
+        self.tokens = self._erzeugeTokenListeMitMarkern() 
+    
+    def _erzeugeTokenListeMitMarkern(self):
+        token_liste = []
+        for zeile in self.asrExtraktText:
+            woerter = zeile.strip().split()
+            token_liste.extend(woerter)
+            token_liste.append('|')  # Zeilenende-Marker
+        return token_liste
+    
+    def getTokens(self):
+        #zum Test:
+        print (f"Die Anzahl der Wörter im Text beträgt {len(self.tokens)}, die Anzahl der eindeutigen Wörter {len(list(set(self.tokens)))}.")
+        print (self.tokens)
+        return self.tokens
 
 
 #Klasse Levenshtein erbte ursprünglich von "__Base", diese Funktionalität ist jetzt in Klasse Levenshtein integriert
@@ -161,14 +182,15 @@ class Kostenfunktion():
         print (self.aehnlichkeitsmass)
         return self.aehnlichkeitsmass
          
+asr = ASRExtrakt("ADG3149_01_01_de_speaker.csv")
+asr.getTokens()
+# t = Tokenuebertragung()
+# b = Levenshtein ()
 
-t = Tokenuebertragung()
-b = Levenshtein ()
-
-s1 = ["K","I","R","|","C","H","E"]
-s2 = ["K","R","O","N","E"]
-tp1 = b.berechneTransformationsmatrix (s1, s2)
-t.uebertrageToken(s1,s2,tp1)
+# s1 = ["K","I","R","|","C","H","E"]
+# s2 = ["K","R","O","N","E"]
+# tp1 = b.berechneTransformationsmatrix (s1, s2)
+# t.uebertrageToken(s1,s2,tp1)
 # k = Kostenfunktion()
 
 # print(f"Tokendistanz: {b.berechneTransformationsmatrix (tokenliste1, tokenliste2)}")
