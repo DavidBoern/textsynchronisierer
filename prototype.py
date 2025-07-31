@@ -5,36 +5,17 @@ from collections import defaultdict
 from itertools import zip_longest
 from typing import Any, Sequence, TypeVar
 
-# app
-#from .base import Base as _Base, BaseSimilarity as _BaseSimilarity
-#from .types import SimFunc, TestFunc
-
 import itertools
+import pandas as pdd
 
-try:
-    # external
-    import numpy
-except ImportError:
-    numpy = None  # type: ignore[assignment]
-
-
-__all__ = [
-    'Hamming', 'MLIPNS',
-    'Levenshtein', 'DamerauLevenshtein',
-    'Jaro', 'JaroWinkler', 'StrCmp95',
-    'NeedlemanWunsch', 'Gotoh', 'SmithWaterman',
-
-    'hamming', 'mlipns',
-    'levenshtein', 'damerau_levenshtein',
-    'jaro', 'jaro_winkler', 'strcmp95',
-    'needleman_wunsch', 'gotoh', 'smith_waterman',
-]
 T = TypeVar('T')
 
+
 #Klasse Levenshtein erbte ursprünglich von "__Base", diese Funktionalität ist jetzt in Klasse Levenshtein integriert
-class Levenshtein():
+class Levenshtein:
 
 #ursprünglich aus Base geerbt:
+
     @staticmethod
     def _ident(*elements: object) -> bool:
         """Return True if all sequences are equal.
@@ -53,12 +34,9 @@ class Levenshtein():
         self,
         qval: int = 1,
         test_func: TestFunc | None = None,
-        #external: bool = True,
     ) -> None:
         self.qval = qval
         self.test_func = test_func or self._ident
-        #self.external = external
-
 
     def _cycled(self, s1: Sequence[T], s2: Sequence[T]) -> int:
         rows = len(s1) + 1
@@ -118,7 +96,6 @@ class Levenshtein():
         for zeile in transformationsprotokoll:   # nur zum Test
             print (zeile)  # nur zum Test
         return transformationsprotokoll
-# hier nicht notwendig        return int(cur[-1])
 
     def __call__(self, s1: Sequence[T], s2: Sequence[T]) -> int:
         s1, s2 = self._get_sequences(s1, s2)
@@ -126,22 +103,19 @@ class Levenshtein():
 
 class Tokenuebertragung:
     def uebertrageToken(self, s1: Sequence[T], s2: Sequence[T], transformationsprotokoll: list[list[str]]):
-#braucht man das?        rows = len([c for c in s1 if c != "|"]) + 1 # List comprehension
-#braucht man das?        cols = len(s2) + 1 
-        s1 = list (s1) # nur jetzt bei den Strings im Test
         row_sequenz_anfangsindex = len(s1)-1
         print (f"row_sequenz_anfangsindex = {len(s1)-1}")
         row_matrix_anfangsindex = len([c for c in s1 if c != "|"]) # List comprehension
         col_anfangsindex = len(s2)  # Matrixindex geht bis len(s2), Index von s2 nur bis len(s2)-1
-        self.syncSchrittAusfuehren (s1, s2, transformationsprotokoll, row_sequenz_anfangsindex, row_matrix_anfangsindex, col_anfangsindex)
-        print (s1)       
-    def syncSchrittAusfuehren (self, s1: Sequence[T], s2: Sequence[T], transformationsprotokoll: list[list[str]], row_sequenz_index, row_matrix_index, col_index):
-        while s1[row_sequenz_index]=="|": row_sequenz_index -=1
+        self.syncSchritteAusfuehren (s1, s2, transformationsprotokoll, row_sequenz_anfangsindex, row_matrix_anfangsindex, col_anfangsindex)
+
+        #nur zum Test:
+        print (s1)      
+
+    def syncSchritteAusfuehren (self, s1: Sequence[T], s2: Sequence[T], transformationsprotokoll: list[list[str]], row_sequenz_index, row_matrix_index, col_index):
         while row_sequenz_index >= 0:
-            match transformationsprotokoll[row_matrix_index][col_index]:
-        
-        
-         #   return s1
+            if s1[row_sequenz_index]=="|": row_sequenz_index -=1
+            match transformationsprotokoll[row_matrix_index][col_index]:           
                 case "e":
                     s1[row_sequenz_index] = s2 [col_index-1] # Wenn Wort z.B. 4 Zeichen lang, dann ist die letzte Stelle Index =3                  
                     print (f"e wird aufgerufen.Die Stelle {row_sequenz_index} wird durch {s2[col_index-1]} ersetzt.")
@@ -158,10 +132,9 @@ class Tokenuebertragung:
                     print (f"i wird aufgerufen. An der Stelle {row_sequenz_index+1} wird {s2[col_index-1]} eingefügt, eins mehr wäre ein {s2[col_index]} ")
                     col_index -=1
         #if row_sequenz == 0 or row_matrix == 0 or col == 0:
-            self.syncSchrittAusfuehren(s1, s2, transformationsprotokoll, row_sequenz_index, row_matrix_index, col_index)
+#            self.syncSchrittAusfuehren(s1, s2, transformationsprotokoll, row_sequenz_index, row_matrix_index, col_index)
+        else:
             return s1
-
-        
     
 class Kostenfunktion():
     def __init__(self):
@@ -177,8 +150,7 @@ class Kostenfunktion():
         eindeutigeToken = sorted(set(token_List1 + token_List2))
         tokenKombinationen = itertools.combinations(eindeutigeToken,2)
         return tokenKombinationen                              
-                
-      
+                    
     def berechneTokenDistanzen(self, token_List1, token_List2):
         levenshtein = Levenshtein()
         tokenKombinationen = self.erstelleTokenpaare(token_List1,token_List2)
@@ -193,22 +165,11 @@ class Kostenfunktion():
 t = Tokenuebertragung()
 b = Levenshtein ()
 
-s1 = "KIR|CHEN"
-s2 = "KIRCHE"
+s1 = ["K","I","R","|","C","H","E"]
+s2 = ["K","R","O","N","E"]
 tp1 = b.berechneTransformationsmatrix (s1, s2)
 t.uebertrageToken(s1,s2,tp1)
 # k = Kostenfunktion()
-# tokenliste1 = ["danke", "volker", "dazu", "gekommen", "bist", "nachdem", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "und", "80er", "jahre", "in", "münster", "und", "die", "auseinandersetzung", "um", "die", "frauenstraße", "und", "das", "studentische", "leben, ", "die", "auseinandersetzungen", "an", "der", "uni", "und", "die", "wirkung", "in", "die", "stadt", "hinein", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen, ", "wie", "bist", "du", "nach", "münster", "gekommen", "wie", "ging", "es", "im", "studium", "weiter", "und", "wie", "bist", "du", "in", "kontakt", "mit", "der", "frauenstraße"]
-# tokenliste2 = ["danke", "volker", "dass", "du", "gekommen", "bist, ", "nachdem", "wir", "ja", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "80er", "jahre", "in", "münster", "um", "die", "auseinandersetzung", "um", "die", "frauenstraße", "um", "das", "studentische", "leben", "an", "der", "uni, ", "aber", "auch", "die", "auseinandersetzungen", "dort", "und", "was", "im", "grunde", "genommen", "in", "die", "stadt", "hinein", "wirkte", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen", "wie", "bist", "du", "nach", "münster", "gekommen", "ja", "und", "dann", "im", "grunde", "genommen", "wie", "ging", "es", "dann", "im", "studium", "weiter", "und", "wie", "bist", "du", "dann", "auch", "in", "kontakt", "mit", "der", "frauenstraße"]
-# individuelleErsetzungskosten = k.berechneTokenDistanzen(tokenliste1, tokenliste2)
-
-#tokenliste1 = "Fahr|ra|d"
-#tokenliste2 = "Laufrad" 
-#tokenliste1 = ["danke", "volker", "dazu", "gekommen", "bist", "nachdem", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "und", "80er", "jahre", "in", "münster", "und", "die"]
-#tokenliste2 = ["danke", "volker", "dass", "du", "gekommen", "bist, ", "nachdem", "wir", "ja", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "80er", "jahre", "in", "münster", "um", "die"]
-#tokenliste1 = ["danke", "volker", "dazu", "gekommen", "bist", "nachdem", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "und", "80er", "jahre", "in", "münster", "und", "die", "auseinandersetzung", "um", "die", "frauenstraße", "und", "das", "studentische", "leben, ", "die", "auseinandersetzungen", "an", "der", "uni", "und", "die", "wirkung", "in", "die", "stadt", "hinein", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen, ", "wie", "bist", "du", "nach", "münster", "gekommen", "wie", "ging", "es", "im", "studium", "weiter", "und", "wie", "bist", "du", "in", "kontakt", "mit", "der", "frauenstraße"]
-#tokenliste2 = ["danke", "volker", "dass", "du", "gekommen", "bist, ", "nachdem", "wir", "ja", "mehrere", "anläufe", "gemacht", "haben", "es", "geht", "um", "die", "70er", "80er", "jahre", "in", "münster", "um", "die", "auseinandersetzung", "um", "die", "frauenstraße", "um", "das", "studentische", "leben", "an", "der", "uni, ", "aber", "auch", "die", "auseinandersetzungen", "dort", "und", "was", "im", "grunde", "genommen", "in", "die", "stadt", "hinein", "wirkte", "aber", "zunächst", "möchte", "ich", "deine", "ganz", "persönliche", "geschichte", "hören", "wie", "und", "wo", "bist", "du", "aufgewachsen", "wie", "bist", "du", "nach", "münster", "gekommen", "ja", "und", "dann", "im", "grunde", "genommen", "wie", "ging", "es", "dann", "im", "studium", "weiter", "und", "wie", "bist", "du", "dann", "auch", "in", "kontakt", "mit", "der", "frauenstraße"]
-
 
 # print(f"Tokendistanz: {b.berechneTransformationsmatrix (tokenliste1, tokenliste2)}")
 # print (f"Länge Tokenliste 1: {len(tokenliste1)}")
