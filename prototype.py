@@ -7,6 +7,8 @@ from typing import Any, Sequence, TypeVar
 
 import itertools
 import pandas as pd
+import pypandoc
+import re
 
 T = TypeVar('T')
 
@@ -14,22 +16,44 @@ class ASRExtrakt:
     def __init__(self,pfad):
         self.pfad = pfad
         self.df = pd.read_csv(pfad, sep='\t', header = 0)
+        #Textinhalte des ASR-Extrakts befinden sich in der dritten Spalte. Lediglich diese muss analysiert/angepasst werden:
         self.asrExtraktText = self.df.iloc[:,2].astype(str).tolist()[1:]
-        self.tokens = self._erzeugeTokenListeMitMarkern() 
+        self.WortListeMitMarkern = self._erzeugeWortListeMitMarkern() 
     
-    def _erzeugeTokenListeMitMarkern(self):
-        token_liste = []
+    def _erzeugeWortListeMitMarkern(self):  
+        wortListe = []
         for zeile in self.asrExtraktText:
             woerter = zeile.strip().split()
-            token_liste.extend(woerter)
-            token_liste.append('|')  # Zeilenende-Marker
-        return token_liste
+            wortListe.extend(woerter)
+            wortListe.append('|')  # Zeilenende-Marker
+        return wortListe
     
-    def getTokens(self):
+    def getWortlisteMitMarkern(self):
         #zum Test:
-        print (f"Die Anzahl der Wörter im Text beträgt {len(self.tokens)}, die Anzahl der eindeutigen Wörter {len(list(set(self.tokens)))}.")
-        print (self.tokens)
-        return self.tokens
+        # print (f"Die Anzahl der Wörter im Text beträgt {len(self.WortListeMitMarkern)}, die Anzahl der eindeutigen Wörter {len(list(set(self.WortListeMitMarkern)))}.")
+        # print (self.WortListeMitMarkern)
+        return self.WortListeMitMarkern
+    
+class ManuellesTranskript:
+    def __init__(self,pfad):
+        self.pfad = pfad
+        self.wortListeOhnePraefixe = self._erzeugeWortListeOhnePraefixe(pfad)
+       
+    def _erzeugeWortListeOhnePraefixe(self,pfad):
+        text = pypandoc.convert_file(pfad, 'plain')
+        gesamtTextOhnePraefixe = re.sub(r"\b[A-Z]{2,3}_[A-Z]{2,3}\b","",text)
+        wortListeOhnePraefixe = gesamtTextOhnePraefixe.split()
+        # zum Test:
+        # print (wortListeOhnePraefixe)
+        return wortListeOhnePraefixe
+
+
+    
+    # def getWoerter(self):
+    #     #zum Test:
+    #     print (f"Die Anzahl der Wörter im Text beträgt {len(self.woerter)}, die Anzahl der eindeutigen Wörter {len(list(set(self.woerter)))}.")
+    #     print (self.woerter)
+    #     return self.woerter
 
 
 #Klasse Levenshtein erbte ursprünglich von "__Base", diese Funktionalität ist jetzt in Klasse Levenshtein integriert
@@ -181,9 +205,14 @@ class Kostenfunktion():
         print (dict(sorted(self.aehnlichkeitsmass.items(), key=lambda item: item[1])))
         print (self.aehnlichkeitsmass)
         return self.aehnlichkeitsmass
-         
+
+mt = ManuellesTranskript("ADG3149_01_01.odt")
 asr = ASRExtrakt("ADG3149_01_01_de_speaker.csv")
-asr.getTokens()
+k = Kostenfunktion()
+k.berechneTokenDistanzen(mt.wortListeOhnePraefixe, asr.WortListeMitMarkern)
+
+# print (asr.df.head)
+#asr.getTokens()
 # t = Tokenuebertragung()
 # b = Levenshtein ()
 
@@ -191,7 +220,6 @@ asr.getTokens()
 # s2 = ["K","R","O","N","E"]
 # tp1 = b.berechneTransformationsmatrix (s1, s2)
 # t.uebertrageToken(s1,s2,tp1)
-# k = Kostenfunktion()
 
 # print(f"Tokendistanz: {b.berechneTransformationsmatrix (tokenliste1, tokenliste2)}")
 # print (f"Länge Tokenliste 1: {len(tokenliste1)}")
