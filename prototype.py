@@ -55,7 +55,32 @@ class ManuellesTranskript:
     #     print (self.woerter)
     #     return self.woerter
 
+class Textvorverarbeiter:
+    def vorverarbeite (self, textListe):
+        self.lowercase(textListe)
+        self.umlauteNormalisieren(textListe)
+        #zum Text:
+        print (f"hier kommt die Textliste:{textListe}")
+        return (textListe)
 
+    def lowercase(self,t):
+        for i in range(len(t)):
+            t[i] = t[i].lower()
+        return t
+    
+    def umlauteNormalisieren(self,t):
+        umlautMap = {
+        "ae": "ä", "oe": "ö", "ue": "ü", 
+        "Ae": "Ä", "Oe": "Ö", "Ue": "Ü", 
+        "ß": "ss"} 
+        new_list = []
+        for i in range(len(t)):
+            for k, v in umlautMap.items():
+                t[i] = t[i].replace(k, v)
+        return t
+        
+
+    
 #Klasse Levenshtein erbte ursprünglich von "__Base", diese Funktionalität ist jetzt in Klasse Levenshtein integriert
 class Levenshtein:
 
@@ -207,9 +232,12 @@ class Kostenfunktion():
         return self.aehnlichkeitsmass
 
 mt = ManuellesTranskript("ADG3149_01_01.odt")
-asr = ASRExtrakt("ADG3149_01_01_de_speaker.csv")
-k = Kostenfunktion()
-k.berechneTokenDistanzen(mt.wortListeOhnePraefixe, asr.WortListeMitMarkern)
+tv = Textvorverarbeiter()
+tv.vorverarbeite (mt.wortListeOhnePraefixe)
+
+# asr = ASRExtrakt("ADG3149_01_01_de_speaker.csv")
+# k = Kostenfunktion()
+# k.berechneTokenDistanzen(mt.wortListeOhnePraefixe, asr.WortListeMitMarkern)
 
 # print (asr.df.head)
 #asr.getTokens()
