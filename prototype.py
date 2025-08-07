@@ -57,8 +57,9 @@ class ManuellesTranskript:
 
 class Textvorverarbeiter:
     def vorverarbeite (self, textListe):
-        self.lowercase(textListe)
-        self.umlauteNormalisieren(textListe)
+        textListe = self.lowercase(textListe)
+        textListe = self.umlauteNormalisieren(textListe)
+        textListe = self.zahlenNormalisieren(textListe)
         #zum Text:
         print (f"hier kommt die Textliste:{textListe}")
         return (textListe)
@@ -70,15 +71,41 @@ class Textvorverarbeiter:
     
     def umlauteNormalisieren(self,t):
         umlautMap = {
-        "ae": "ä", "oe": "ö", "ue": "ü", 
-        "Ae": "Ä", "Oe": "Ö", "Ue": "Ü", 
+        "ae": "ä", "oe": "ö", "ue": "ü",  # in diesem Anwendungsfall ist Vergleich von Kleinbuchstagen ausreichend.  
         "ß": "ss"} 
-        new_list = []
         for i in range(len(t)):
             for k, v in umlautMap.items():
                 t[i] = t[i].replace(k, v)
         return t
         
+    def zahlenNormalisieren(self,t):
+        zahlenMap = {
+        "eins":"1", "zwei": "2", "drei": "3", "vier": "4", "fünf": "5", "sechs": "6", "sieben": "7", "acht": "8", "neun": "9", "zehn": "10", "elf": "11", "zwölf": "12",
+        "erste": "1.", "erster": "1.", "erstes": "1.", "erstens": "1.",
+        "zweite": "2.", "zweiter": "2.", "zweites": "2.", "zweitens": "2.",
+        "dritte": "3.", "dritter": "3.", "drittes": "3.", "drittens": "3.",
+        "vierte": "4.", "vierter": "4.", "viertes": "4.", "viertens": "4.",
+        "fünfte": "5.", "fünfter": "5.", "fünftes": "5.", "fünftens": "5.",
+        "sechste": "6.", "sechster": "6.", "sechstes": "6.", "sechstens": "6.",
+        "siebte": "7.", "siebter": "7.", "siebtes": "7.", "siebtens": "7.",
+        "achte": "8.", "achter": "8.", "achtes": "8.", "achtens": "8.",
+        "neunte": "9.", "neunter": "9.", "neuntes": "9.", "neuntens": "9.",
+        "zehnte": "10.", "zehnter": "10.", "zehntes": "10.", "zehntens": "10.",
+        "elfte": "11.", "elfter": "11.", "elftes": "11.", "elftens": "11.",
+        "zwölfte": "12.", "zwölfter": "12.", "zwölftes": "12.", "zwölftens": "12."
+        }
+        for i in range(len(t)):
+            for k, v in zahlenMap.items():
+                t[i] = t[i].replace(k, v)
+        return t
+    
+    def waehrungszeichenNormalisieren(self,t):
+        waehrungszeichenMap = {
+        "dollar": "$", "dollars": "$", "euro": "€", "euros": "€"} 
+        for i in range(len(t)):
+            for k, v in waehrungszeichenMap.items():
+                t[i] = t[i].replace(k, v)
+        return t
 
     
 #Klasse Levenshtein erbte ursprünglich von "__Base", diese Funktionalität ist jetzt in Klasse Levenshtein integriert
