@@ -9,6 +9,7 @@ import itertools
 import pandas as pd
 import pypandoc
 import re
+import string
 
 T = TypeVar('T')
 
@@ -17,7 +18,7 @@ class ASRExtrakt:
         self.pfad = pfad
         self.df = pd.read_csv(pfad, sep='\t', header = 0)
         #Textinhalte des ASR-Extrakts befinden sich in der dritten Spalte. Lediglich diese muss analysiert/angepasst werden:
-        self.asrExtraktText = self.df.iloc[:,2].astype(str).tolist()[1:]
+        self.asrExtraktText = self.df.iloc[:,2].astype(str).tolist()[0:]
         self.WortListeMitMarkern = self._erzeugeWortListeMitMarkern() 
     
     def _erzeugeWortListeMitMarkern(self):  
@@ -27,13 +28,7 @@ class ASRExtrakt:
             wortListe.extend(woerter)
             wortListe.append('|')  # Zeilenende-Marker
         return wortListe
-    
-    def getWortlisteMitMarkern(self):
-        #zum Test:
-        # print (f"Die Anzahl der Wörter im Text beträgt {len(self.WortListeMitMarkern)}, die Anzahl der eindeutigen Wörter {len(list(set(self.WortListeMitMarkern)))}.")
-        # print (self.WortListeMitMarkern)
-        return self.WortListeMitMarkern
-    
+        
 class ManuellesTranskript:
     def __init__(self,pfad):
         self.pfad = pfad
@@ -60,8 +55,12 @@ class Textvorverarbeiter:
         textListe = self.lowercase(textListe)
         textListe = self.umlauteNormalisieren(textListe)
         textListe = self.zahlenNormalisieren(textListe)
+        textListe = self.abkuerzungenNormalisieren(textListe)
+        textListe = self.waehrungszeichenNormalisieren(textListe)
+        textListe = self.punktuationEntfernen(textListe)
+
         #zum Text:
-        print (f"hier kommt die Textliste:{textListe}")
+        #print (f"hier kommt die Textliste:{textListe}")
         return (textListe)
 
     def lowercase(self,t):
@@ -71,15 +70,15 @@ class Textvorverarbeiter:
     
     def umlauteNormalisieren(self,t):
         umlautMap = {
-        "ae": "ä", "oe": "ö", "ue": "ü",  # in diesem Anwendungsfall ist Vergleich von Kleinbuchstagen ausreichend.  
+        "ae": "ä", "oe": "ö", "ue": "ü",  # wegen vorgelagertem lowercase ist Vergleich von Kleinbuchstagen ausreichend. Fehler wie die Umwandlung in "fraünstrasse" können vernachlässigt werden, weil Vorverarbeitungsschritte lediglich temporär sind, und derartige Fehler für den Textvergleich nicht besonders relevant sind.  
         "ß": "ss"} 
         for i in range(len(t)):
             for k, v in umlautMap.items():
                 t[i] = t[i].replace(k, v)
         return t
-        
-    def zahlenNormalisieren(self,t):
-        zahlenMap = {
+          
+    def tokenMitZahlenMapVergleichen (self, token): 
+        ZAHLENMAP = {
         "eins":"1", "zwei": "2", "drei": "3", "vier": "4", "fünf": "5", "sechs": "6", "sieben": "7", "acht": "8", "neun": "9", "zehn": "10", "elf": "11", "zwölf": "12",
         "erste": "1.", "erster": "1.", "erstes": "1.", "erstens": "1.",
         "zweite": "2.", "zweiter": "2.", "zweites": "2.", "zweitens": "2.",
@@ -94,11 +93,11 @@ class Textvorverarbeiter:
         "elfte": "11.", "elfter": "11.", "elftes": "11.", "elftens": "11.",
         "zwölfte": "12.", "zwölfter": "12.", "zwölftes": "12.", "zwölftens": "12."
         }
-        for i in range(len(t)):
-            for k, v in zahlenMap.items():
-                t[i] = t[i].replace(k, v)
-        return t
+        return ZAHLENMAP.get(token, token)
     
+    def zahlenNormalisieren(self,wortListe):
+        return [self.tokenMitZahlenMapVergleichen(t) for t in wortListe]
+         
     def waehrungszeichenNormalisieren(self,t):
         waehrungszeichenMap = {
         "dollar": "$", "dollars": "$", "euro": "€", "euros": "€"} 
@@ -106,7 +105,27 @@ class Textvorverarbeiter:
             for k, v in waehrungszeichenMap.items():
                 t[i] = t[i].replace(k, v)
         return t
-
+    
+    def tokenMitAbkuerzungsMapVergleichen (self, token): 
+        ABKUERZUNGSMAP = {
+            "z.b.": "zum Beispiel",
+            "v.a.": "vor allem",
+            "u.a.": "unter anderem",
+            "d.h.": "das heißt",
+            "bzw.": "beziehungsweise",
+            "usw.": "und so weiter",
+            "ca.": "circa",
+            "etc.": "et cetera",
+            "sog.": "sogenannt",
+            "mfg": "mit freundlichen Grüßen"
+        }
+        return ABKUERZUNGSMAP.get(token, token)
+    
+    def abkuerzungenNormalisieren(self,wortListe):
+        return [self.tokenMitAbkuerzungsMapVergleichen(t) for t in wortListe]
+    
+    def punktuationEntfernen (self, wortListe):
+        return [t.rstrip(string.punctuation.replace("|", "")) for t in wortListe]
     
 #Klasse Levenshtein erbte ursprünglich von "__Base", diese Funktionalität ist jetzt in Klasse Levenshtein integriert
 class Levenshtein:
@@ -149,6 +168,8 @@ class Levenshtein:
                 dist = self.test_func(s1[r - 1], s2[c - 1])
                 edit = prev[c - 1] + (not dist)
                 cur[c] = min(edit, deletion, insertion)
+        #zum Text:
+        print (cur[-1])
         return int(cur[-1])
 
     def __call__(self, s1: Sequence[T], s2: Sequence[T]) -> int:
@@ -258,13 +279,16 @@ class Kostenfunktion():
         print (self.aehnlichkeitsmass)
         return self.aehnlichkeitsmass
 
-mt = ManuellesTranskript("ADG3149_01_01.odt")
+mt = ManuellesTranskript("ADG3149_01_01_teil.odt")
+asr = ASRExtrakt("ADG3149_01_01_de_speaker_teil.csv")
 tv = Textvorverarbeiter()
-tv.vorverarbeite (mt.wortListeOhnePraefixe)
 
-# asr = ASRExtrakt("ADG3149_01_01_de_speaker.csv")
-# k = Kostenfunktion()
-# k.berechneTokenDistanzen(mt.wortListeOhnePraefixe, asr.WortListeMitMarkern)
+mtVergleichsText = tv.vorverarbeite (mt.wortListeOhnePraefixe)
+asrVergleichsText = tv.vorverarbeite (asr.WortListeMitMarkern)
+
+l = Levenshtein()
+l._cycled(mtVergleichsText, asrVergleichsText)
+print (f"Die Liste des manuellen Transkripts hat {len(mtVergleichsText)} Elemente")
 
 # print (asr.df.head)
 #asr.getTokens()
