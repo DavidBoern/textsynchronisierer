@@ -1,3 +1,4 @@
+#der Levenshtein-Algorithmus ist übernommen von der Python Library "TextDistance"  
 from __future__ import annotations
 
 # built-in
@@ -8,16 +9,18 @@ from typing import Any, Sequence, TypeVar
 import itertools
 import pandas as pd
 import pypandoc
+import os
 import re
 import string
 
 T = TypeVar('T')
 
+
 class ASRExtrakt:
     def __init__(self,pfad):
         self.pfad = pfad
         self.df = pd.read_csv(pfad, sep='\t', header = 0)
-        #Textinhalte des ASR-Extrakts befinden sich in der dritten Spalte. Lediglich diese muss analysiert/angepasst werden:
+        #Die Textinhalte des ASR-Extrakts befinden sich in der dritten Spalte der CSV-Datei. Für die weiteren Schritte des Textvergleichs muss diese ausgelesen werden.
         self.asrExtraktText = self.df.iloc[:,2].astype(str).tolist()[0:]
         self.wortListeMitMarkern = self._erzeugeWortListeMitMarkern() 
     
@@ -33,41 +36,30 @@ class ManuellesTranskript:
     def __init__(self,pfad):
         self.pfad = pfad
         self.wortListeOhnePraefixe = self._erzeugeWortListeOhnePraefixe(pfad)
-        self.originalWortListeOhnePraefixe = self.wortListeOhnePraefixe.copy()
+        self.originalWortListeOhnePraefixe = self.wortListeOhnePraefixe.copy()   # Kopie, die im weiteren Programmablauf unverändert bleibt.
        
     def _erzeugeWortListeOhnePraefixe(self,pfad):
         text = pypandoc.convert_file(pfad, 'plain')
         gesamtTextOhnePraefixe = re.sub(r"\b[A-Z]{2,3}_[A-Z]{2,3}\b","",text)
         wortListeOhnePraefixe = gesamtTextOhnePraefixe.split()
-        # zum Test:
-        # print (wortListeOhnePraefixe)
         return wortListeOhnePraefixe
-
-
-    
-    # def getWoerter(self):
-    #     #zum Test:
-    #     print (f"Die Anzahl der Wörter im Text beträgt {len(self.woerter)}, die Anzahl der eindeutigen Wörter {len(list(set(self.woerter)))}.")
-    #     print (self.woerter)
-    #     return self.woerter
 
 class Textvorverarbeiter:
     def vorverarbeite (self, textListe):
-        textListe = self.lowercase(textListe)
-        textListe = self.umlauteNormalisieren(textListe)
-        textListe = self.zahlenNormalisieren(textListe)
-        textListe = self.abkuerzungenNormalisieren(textListe)
-        textListe = self.waehrungszeichenNormalisieren(textListe)
+        textListe = self._lowercase(textListe)
+        textListe = self._umlauteNormalisieren(textListe)
+        textListe = self._zahlenNormalisieren(textListe)
+        textListe = self._abkuerzungenNormalisieren(textListe)
+        textListe = self._waehrungszeichenNormalisieren(textListe)
         textListe = self.punktuationEntfernen(textListe)
-     
         return (textListe)
 
-    def lowercase(self,t):
+    def _lowercase(self,t):
         for i in range(len(t)):
             t[i] = t[i].lower()
         return t
     
-    def umlauteNormalisieren(self,t):
+    def _umlauteNormalisieren(self,t):
         umlautMap = {
         "ae": "ä", "oe": "ö", "ue": "ü",  # wegen vorgelagertem lowercase ist Vergleich von Kleinbuchstagen ausreichend. Fehler wie die Umwandlung in "fraünstrasse" können vernachlässigt werden, weil Vorverarbeitungsschritte lediglich temporär sind, und derartige Fehler für den Textvergleich nicht besonders relevant sind.  
         "ß": "ss"} 
@@ -76,7 +68,7 @@ class Textvorverarbeiter:
                 t[i] = t[i].replace(k, v)
         return t
           
-    def tokenMitZahlenMapVergleichen (self, token): 
+    def _tokenMitZahlenMapVergleichen (self, token): 
         ZAHLENMAP = {
         "eins":"1", "zwei": "2", "drei": "3", "vier": "4", "fünf": "5", "sechs": "6", "sieben": "7", "acht": "8", "neun": "9", "zehn": "10", "elf": "11", "zwölf": "12",
         "erste": "1.", "erster": "1.", "erstes": "1.", "erstens": "1.",
@@ -94,10 +86,10 @@ class Textvorverarbeiter:
         }
         return ZAHLENMAP.get(token, token)
     
-    def zahlenNormalisieren(self,wortListe):
-        return [self.tokenMitZahlenMapVergleichen(t) for t in wortListe]
+    def _zahlenNormalisieren(self,wortListe):
+        return [self._tokenMitZahlenMapVergleichen(t) for t in wortListe]
          
-    def waehrungszeichenNormalisieren(self,t):
+    def _waehrungszeichenNormalisieren(self,t):
         waehrungszeichenMap = {
         "dollar": "$", "dollars": "$", "euro": "€", "euros": "€"} 
         for i in range(len(t)):
@@ -105,7 +97,7 @@ class Textvorverarbeiter:
                 t[i] = t[i].replace(k, v)
         return t
     
-    def tokenMitAbkuerzungsMapVergleichen (self, token): 
+    def _tokenMitAbkuerzungsMapVergleichen (self, token): 
         ABKUERZUNGSMAP = {
             "z.b.": "zum Beispiel",
             "v.a.": "vor allem",
@@ -120,18 +112,17 @@ class Textvorverarbeiter:
         }
         return ABKUERZUNGSMAP.get(token, token)
     
-    def abkuerzungenNormalisieren(self,wortListe):
-        return [self.tokenMitAbkuerzungsMapVergleichen(t) for t in wortListe]
+    def _abkuerzungenNormalisieren(self,wortListe):
+        return [self._tokenMitAbkuerzungsMapVergleichen(t) for t in wortListe]
     
-# Vereinfachte Methode, in der Elemente, die lediglich aus Satzzeichen bestehen, als leere Elemente in der Liste bleiben. Die folgende Methode lässt die Länge der Wortliste (und damit auch die einzelnen Indexpositionen!) unverändert. Das erleichtert die später vorgesehene Rückabwicklung der Vorverarbeitungsschritte: 
+# in der folgenden Methode bleiben Elemente, die lediglich aus Satzzeichen bestehen, als leere Elemente in der Liste. Sie lässt somit (wie sämtliche Vorverarbeitungsschritte) die Länge der Wortliste (und auch die einzelnen Indexpositionen) unverändert. Das erleichtert die später vorgesehene Rückabwicklung der Vorverarbeitungsschritte: 
     def punktuationEntfernen (self, wortListe):
         return [t.strip(string.punctuation.replace("|", "")) for t in wortListe]
               
-# Klasse Levenshtein erbte ursprünglich von "__Base", diese Funktionalität ist jetzt in Klasse Levenshtein integriert
+# Klasse Levenshtein erbt in der textdistance-Library von "__Base". Diese Funktionalität isthier in der Klasse Levenshtein integriert
 class Levenshtein:
 
 #ursprünglich aus Base geerbt:
-
     @staticmethod
     def _ident(*elements: object) -> bool:
         """Return True if all sequences are equal.
@@ -168,18 +159,10 @@ class Levenshtein:
                 dist = self.test_func(s1[r - 1], s2[c - 1])
                 edit = prev[c - 1] + (not dist)
                 cur[c] = min(edit, deletion, insertion)
-        #zum Test:
-        print (cur[-1])
         return int(cur[-1])
-
-    def __call__(self, s1: Sequence[T], s2: Sequence[T]) -> int:
-        s1, s2 = self._get_sequences(s1, s2)
-        return self._cycled(s1, s2)
-    
-    
-    def berechneTransformationsmatrix (self, s1: Sequence[T], s2: Sequence[T]) -> int:
-
-        rows = len([c for c in s1 if c != "|"]) + 1 # List comprehension
+      
+    def berechneTransformationsmatrix (self, s1: Sequence[T], s2: Sequence[T], kostenfunktion: dict[tuple[T, T], float]):
+        rows = len([c for c in s1 if c != "|"]) + 1
         cols = len(s2) + 1 
         prev = None
         cur = range(cols)
@@ -199,10 +182,13 @@ class Levenshtein:
                 continue          
             prev, cur = cur, [r_matrix] + [0] * (cols - 1)
             for c in range(1, cols):              
-                deletion = prev[c] + 2
-                insertion = cur[c - 1] + 2
-                dist = self.test_func(s1[r_sequenz], s2[c - 1])
-                edit = prev[c - 1] + (not dist)
+                deletion = prev[c] + 1
+                insertion = cur[c - 1] + 1
+                gleich = self.test_func(s1[r_sequenz], s2[c - 1])
+                if gleich: ersetzKosten = 0
+                else: 
+                    ersetzKosten = kostenfunktion.get((s1[r_sequenz], s2[c - 1]), 3)
+                edit = prev[c - 1] + ersetzKosten
                 cur[c] = min(edit, deletion, insertion)
                 if cur[c] == edit:
                     transformationsprotokoll[r_matrix][c] = "e"
@@ -211,13 +197,7 @@ class Levenshtein:
                 else:
                     transformationsprotokoll[r_matrix][c] = "i"
             r_matrix +=1
-        # for zeile in transformationsprotokoll:   # nur zum Test
-            # print (zeile)  # nur zum Test
         return transformationsprotokoll
-
-    def __call__(self, s1: Sequence[T], s2: Sequence[T]) -> int:
-        s1, s2 = self._get_sequences(s1, s2)
-        return self._cycled(s1, s2)
 
 class Tokenuebertragung:
     def uebertrageToken(self, s1: Sequence[T], s2: Sequence[T], transformationsprotokoll: list[list[str]]):
@@ -271,14 +251,38 @@ class Kostenfunktion():
             dict_Werte[key]=dict_Werte[key]*faktor
         return dict_Werte       
     
-    def _erstelleTokenpaare(self, token_List1, token_List2):
-        eindeutigeToken = sorted(set(token_List1 + token_List2))
-        tokenKombinationen = itertools.combinations(eindeutigeToken,2)
-        return tokenKombinationen                              
-                    
-    def berechneTokenDistanzen(self, token_List1, token_List2):
+    # Um den Rechenaufwand zu minimieren, werden zur Integration gewichteter Ersetzungskosten lediglich Tokenpaare betrachtet, die sich in benachbarten Bereichen der beiden Tokensequenzen befinden. Zudem lässt sich so realisieren, dass "weit entfernte" Ersetzungen mit hohen Kosten verbunden sind. 
+    # alte Methode 
+    # def _erstelleTokenpaare(self, token_List1, token_List2):
+    #     eindeutigeToken = sorted(set(token_List1 + token_List2))
+    #     tokenKombinationen = itertools.combinations(eindeutigeToken,2)
+    #     return tokenKombinationen                              
+
+              
+    def _erstelleTokenpaare(self, gesamtListe1, gesamtListe2):
+        MINGROESSE_TESTSET1 = 40
+        anzahlTestSets = int(len(gesamtListe1)/MINGROESSE_TESTSET1)
+        print (f"anzahlTestSets= {anzahlTestSets}")
+        print (f"len(gesamtListe1) = {len(gesamtListe1)}")
+        groesseSet1 = float(len(gesamtListe1) / anzahlTestSets)
+        groesseSet2 = float(len(gesamtListe2) / anzahlTestSets)
+        print (f"groesseSet1 + groesseSet2 = {groesseSet1}, {groesseSet2}")
+        # um harte Setgrenzen zu verhindern wird überlappend iteriert.
+        testSets =[]
+        for s in testSets:
+        for kombination in itertools.combinations(s, 2):
+            # 1. Nur aufnehmen, wenn kein "|" enthalten ist
+            if "|" not in kombination[0] and "|" not in kombination[1]:
+                # 2. Normal und gespiegelte Reihenfolge aufnehmen
+                tokenKombinationen.add(kombination)
+                tokenKombinationen.add((kombination[1], kombination[0]))
+        tokenKombinationen = tuple (tokenKombinationen)
+        print (f"Hier die TokenKombinationen: {tokenKombinationen}")
+        return tokenKombinationen               
+
+    def berechneTokenDistanzen(self, gesamtListe1, gesamtListe2):
         levenshtein = Levenshtein()
-        tokenKombinationen = self._erstelleTokenpaare(token_List1,token_List2)
+        tokenKombinationen = self._erstelleTokenpaare(gesamtListe1,gesamtListe2)
         for tupel in tokenKombinationen:
             self.aehnlichkeitsmass.update({tupel:(levenshtein._cycled(tupel[0], tupel[1]))/(max(len(tupel[0]),len(tupel[1])))})        
         self.aehnlichkeitsmass = self._normiereKostenFunktion(self.aehnlichkeitsmass)
@@ -287,7 +291,7 @@ class Kostenfunktion():
         #print (self.aehnlichkeitsmass)
         return self.aehnlichkeitsmass
 
-class CSVKorrektur:
+class ASRKorrektur:
     def _zeilentextErstellen(self, umbrueche, wortliste, asr):
         teile, start = [], 0
         umbruecheModifiziert = []
@@ -303,43 +307,55 @@ class CSVKorrektur:
             asr.iat[i, 2] = teile[i]        
         asr.to_csv("output.csv", sep="\t", index=False)
 
-# Daten einlesen:
-asr = ASRExtrakt("ADG3149_01_01_de_speaker_teil.csv")
-mt = ManuellesTranskript("ADG3149_01_01_teil.odt")
+def dateiEinlesen (prompt, regEx):
+    while True:
+        pfad = input(prompt)
+        if not re.search(regEx, pfad, re.IGNORECASE):
+            print("Falsche Dateiendung.")
+            continue
+        if not os.path.isfile(pfad):
+            print("Datei existiert nicht.")
+            continue
+        return pfad
 
-# Daten vorverarbeiten:
-tv = Textvorverarbeiter()
+def main():
+    csvPfad = dateiEinlesen("Pfad zur CSV-Datei eingeben: ", r"\.csv$")
+    odtPfad = dateiEinlesen("Pfad zur ODT-Datei eingeben: ", r"\.odt$")
 
-print (f"Textliste des ASR-Extrakts OHNE Vorverarbeitung:\n {asr.wortListeMitMarkern} \nLänge: {len(asr.wortListeMitMarkern)}")
-asrVergleichsText = tv.vorverarbeite (asr.wortListeMitMarkern)
-print (f"Textliste des  ASR-Extrakts MIT Vorverarbeitung:\n {asrVergleichsText} \nLänge: {len(asrVergleichsText)}")
+    asr = ASRExtrakt(csvPfad)
+    mt = ManuellesTranskript(odtPfad)
 
-print (f"Textliste des manuellen Transkripts OHNE Vorverarbeitung:\n {mt.wortListeOhnePraefixe} \nLänge: {len(mt.wortListeOhnePraefixe)}")
-mtVergleichsText = tv.vorverarbeite (mt.wortListeOhnePraefixe)
-print (f"Textliste des manuellen Transkripts MIT Vorverarbeitung:\n {mtVergleichsText} \nLänge: {len(mtVergleichsText)}")
+    tv = Textvorverarbeiter()
 
-# Kostenfunktion erstellen (evtl. nicht sinnvoll: rechenintensiv und geringer Mehrwert. Erstmal weglassen ):
-# k = Kostenfunktion()
-# aehnlichkeitsmass = k.berechneTokenDistanzen (mtVergleichsText, asrVergleichsText)
-# #zum Test
-# print(f"Hier die Kostenfunktion:{k.aehnlichkeitsmass}")
+    #print (f"Textliste des ASR-Extrakts OHNE Vorverarbeitung:\n {asr.wortListeMitMarkern} \nLänge: {len(asr.wortListeMitMarkern)}")
+    asrVergleichsText = tv.vorverarbeite (asr.wortListeMitMarkern)
+    #print (f"Textliste des  ASR-Extrakts MIT Vorverarbeitung:\n {asrVergleichsText} \nLänge: {len(asrVergleichsText)}")
 
-# Transformationsmatrix berechnen:
-l = Levenshtein()
-transformationsmatrix = l.berechneTransformationsmatrix(asrVergleichsText, mtVergleichsText) 
+    #print (f"Textliste des manuellen Transkripts OHNE Vorverarbeitung:\n {mt.wortListeOhnePraefixe} \nLänge: {len(mt.wortListeOhnePraefixe)}")
+    mtVergleichsText = tv.vorverarbeite (mt.wortListeOhnePraefixe)
+    #print (f"Textliste des manuellen Transkripts MIT Vorverarbeitung:\n {mtVergleichsText} \nLänge: {len(mtVergleichsText)}")
 
-t = Tokenuebertragung ()
-korrigiertesASR = t.uebertrageToken(asrVergleichsText, mtVergleichsText, transformationsmatrix)
-# zum Test:
-print(f"Hier zum Test das korrigierte ASR, allerdings noch mit Pipe statt Zeilenumbruch und durch Vorverarbeitungssschritte modifiziert: {korrigiertesASR}")
+    # Kostenfunktion erstellen (evtl. nicht sinnvoll: rechenintensiv und geringer Mehrwert. Erstmal weglassen ):
+    k = Kostenfunktion()
+    aehnlichkeitsmass = k.berechneTokenDistanzen (mtVergleichsText, asrVergleichsText)
+    # #zum Test
+    #print(f"Hier die Kostenfunktion:{k.aehnlichkeitsmass}")
 
-# zum Test:
-zeilenumbrueche = t._zeilenumbruecheProtokollieren(korrigiertesASR)
-print (f"Stellen mit Zeilenumbrüchen: {zeilenumbrueche}")
+    # Transformationsmatrix berechnen:
+    l = Levenshtein()
+    transformationsmatrix = l.berechneTransformationsmatrix(asrVergleichsText, mtVergleichsText, aehnlichkeitsmass) 
 
-#eigentlich jetzt überflüssig:
-# asrNeuOhneMarker= t._asrMarkerEntfernen(korrigiertesASR)
-# print (f"Neues ASR-Transkript ohne Marker: {asrNeuOhneMarker}")
+    t = Tokenuebertragung ()
+    korrigiertesASR = t.uebertrageToken(asrVergleichsText, mtVergleichsText, transformationsmatrix)
+    # zum Test:
+    print(f"Hier zum Test das korrigierte ASR, allerdings noch mit Pipe statt Zeilenumbruch und durch Vorverarbeitungssschritte modifiziert: {korrigiertesASR}")
 
-csv = CSVKorrektur()
-csv._zeilentextErstellen (zeilenumbrueche, mt.originalWortListeOhnePraefixe, asr.df)
+    # zum Test:
+    zeilenumbrueche = t._zeilenumbruecheProtokollieren(korrigiertesASR)
+    print (f"Stellen mit Zeilenumbrüchen: {zeilenumbrueche}")
+
+    csv = ASRKorrektur()
+    csv._zeilentextErstellen (zeilenumbrueche, mt.originalWortListeOhnePraefixe, asr.df)
+
+if __name__ == "__main__":
+    main()
