@@ -17,10 +17,12 @@ T = TypeVar('T')
 
 
 class ASRExtrakt:
+    """Liest ASR-Extrakt ein und erzeugt eine Wortliste 
+    mit Zeilenende-Markern."""
     def __init__(self,pfad):
         self.pfad = pfad
         self.df = pd.read_csv(pfad, sep='\t', header = 0)
-        #Die Textinhalte des ASR-Extrakts befinden sich in der dritten Spalte der CSV-Datei. Für die weiteren Schritte des Textvergleichs muss diese ausgelesen werden.
+        # Transkriptionstext befindet sich in Spalte 3
         self.asrExtraktText = self.df.iloc[:,2].astype(str).tolist()[0:]
         self.wortListeMitMarkern = self._erzeugeWortListeMitMarkern() 
     
@@ -33,13 +35,20 @@ class ASRExtrakt:
         return wortListe
         
 class ManuellesTranskript:
+    """Liest manuelles Transkript aus ODT ein, 
+    entfernt Sprecherkürzel und erzeugt Wortliste."""
     def __init__(self,pfad):
         self.pfad = pfad
         self.wortListeOhnePraefixe = self._erzeugeWortListeOhnePraefixe(pfad)
-        self.originalWortListeOhnePraefixe = self.wortListeOhnePraefixe.copy()   # Kopie, die im weiteren Programmablauf unverändert bleibt.
+        self.originalWortListeOhnePraefixe = self.wortListeOhnePraefixe.copy()
        
     def _erzeugeWortListeOhnePraefixe(self,pfad):
         text = pypandoc.convert_file(pfad, 'plain')
+        zeilen = text.splitlines()     
+        #Ggf. im Dokument vorhandene Überschrift wird entfernt.
+        if not re.match(r"\b[A-Z]{2,3}_[A-Z]{2,3}\b", zeilen[0]):
+            zeilen.pop(0)
+        text = "\n".join(zeilen)
         gesamtTextOhnePraefixe = re.sub(r"\b[A-Z]{2,3}_[A-Z]{2,3}\b","",text)
         wortListeOhnePraefixe = gesamtTextOhnePraefixe.split()
         return wortListeOhnePraefixe
@@ -61,7 +70,7 @@ class Textvorverarbeiter:
     
     def _umlauteNormalisieren(self,t):
         umlautMap = {
-        "ae": "ä", "oe": "ö", "ue": "ü",  # wegen vorgelagertem lowercase ist Vergleich von Kleinbuchstagen ausreichend. Fehler wie die Umwandlung in "fraünstrasse" können vernachlässigt werden, weil Vorverarbeitungsschritte lediglich temporär sind, und derartige Fehler für den Textvergleich nicht besonders relevant sind.  
+        "ae": "ä", "oe": "ö", "ue": "ü",  
         "ß": "ss"} 
         for i in range(len(t)):
             for k, v in umlautMap.items():
@@ -115,14 +124,13 @@ class Textvorverarbeiter:
     def _abkuerzungenNormalisieren(self,wortListe):
         return [self._tokenMitAbkuerzungsMapVergleichen(t) for t in wortListe]
     
-# In der folgenden Methode bleiben Elemente, die lediglich aus Satzzeichen bestehen, als leere Elemente in der List. Dadurch bleibt die Länge der Wortliste (und auch die einzelnen Indexpositionen) unverändert. Das erleichtert die später vorgesehene Rückabwicklung der Vorverarbeitungsschritte. 
     def _punktuationEntfernen (self, wortListe):
+    # Token, die ausschließlich aus Satzzeichen bestehen, 
+    # bleiben als leere Element in der Wortliste, um Indexpositionen beizubehalten. 
         return [t.strip(string.punctuation.replace("|", "")) for t in wortListe]
               
-# Klasse Levenshtein erbt in der textdistance-Library von "__Base". Diese Funktionalität ist hier in der Klasse Levenshtein integriert.
 class Levenshtein:
-
-#ursprünglich aus Base geerbt:
+    """Implementierung des Levenshtein-Algorithmus auf Basis der textdistance-Library"""
     @staticmethod
     def _ident(*elements: object) -> bool:
         """Return True if all sequences are equal.
@@ -160,9 +168,12 @@ class Levenshtein:
                 edit = prev[c - 1] + (not dist)
                 cur[c] = min(edit, deletion, insertion)
         return int(cur[-1])
-    # Die folgende Methode orientiert sich an der oben angegebenen Methode "_cycled" aus der "textdistance"-Library. Im Unterschied zur "_cycled"-Methode ist es hierbei allerdings nicht der Ähnlichkeitswert zwischen zwei Textdokumenten von Belang. Stattdessen liefert die Methode die entsprechende Matrix zur Berechnung dieses Wertes zurück. Auf Grundlage dieser Matrix lassen sich im folgenden die einzelnen Editierschritte identifizieren.       
     def berechneTransformationsmatrix (self, s1: Sequence[T], s2: Sequence[T], kostenfunktion: dict[tuple[T, T], float]):
-        STANDARD_ERSETZUNGSKOSTEN = 3   # dieser Wert wird hoch angelegt, da Ersetzungen von Begriffen, die sich in den zu vergleichenden Textdateien in unterschiedlichen Bereichen berfinden, eher vermieden werden sollten. Im nächsten Meilenstein werden die Auswirkungen unterschiedlich festgelegter Werte untersucht.
+        """Erstellt Transformationsmatrix zur Rekonstruktion der Editierschritte 
+        (nicht, wie beim Levenshtein-Algorithmus üblich, Distanzwert)."""
+        STANDARD_ERSETZUNGSKOSTEN = 3   
+        # hoher Wert, um Ersetzungen von Begriffen, die sich in den zu vergleichenden 
+        # Textdateien in unterschiedlichen Bereichen befinden, zu vermeiden.
         rows = len([c for c in s1 if c != "|"]) + 1
         cols = len(s2) + 1 
         prev = None
@@ -211,7 +222,8 @@ class Tokenuebertragung:
     def _syncSchritteAusfuehren (self, asr: Sequence[T], mt: Sequence[T], transformationsprotokoll: list[list[str]], row_sequenz_index, row_matrix_index, col_index):
         while row_sequenz_index >= 0:
             if asr[row_sequenz_index]=="|": row_sequenz_index -=1
-            # die einzelnen Editierschritte lassen sich identifizieren, indem die Transformationsmatrix vom Ende bis zum Anfang durchlaufen wird. Da es unter Umständen meherere Transfarmationspfade gibt, mit denen bei minimalen Editierschritten die Übertragung der Dateien erfolgen kann, wird -bei gleichen Kosten der entsprechenden Editierschritte - folgende Priorisierung vorgenommen. 1. Ersetzung, 2. Löschung, 3. Einfügung.   
+            """Um Transformationspfad zu identifizieren, wird Matrix rückwärts durchlaufen.  
+            Priorität bei gleichen Kosten: Ersetzung>Löschung>Einfügung."""   
             match transformationsprotokoll[row_matrix_index][col_index]:                        
                 case "e":
                     asr[row_sequenz_index] = mt [col_index-1] 
@@ -236,22 +248,26 @@ class Tokenuebertragung:
         return asrUmbruchstellen
   
 class Kostenfunktion():
+    """Berechnet gewichtete Ersetzungskosten für Token, die sich
+    in den beiden Dateien (ASR-Extrakt und Manuellem Transkript) 
+    in ähnlichen Bereichen befinden."""
     def __init__(self):
         self.aehnlichkeitsmass = {}
     
-    # die betrachteten Ersetzungskosten werden auf 1 normiert: 
     def _normiereKostenFunktion(self, dict_Werte):
+        """Normiert Kosten auf Mittelwert 1."""
         faktor = len(dict_Werte)/sum(dict_Werte.values())
         for key in dict_Werte:
             dict_Werte[key]=dict_Werte[key]*faktor
         return dict_Werte       
               
     def _erstelleTokenpaare(self, gesamtListe1, gesamtListe2):
+        """Erzeugt die Tokenpaare, für die gewichtete Ersetzungskosten berechnet werden."""
         MINGROESSE_TESTSET1 = 40   # abweichende Setgrößen werden im Rahmen der Evaltuation erprobt.
         anzahlTestSets = int(len(gesamtListe1)/MINGROESSE_TESTSET1)
         groesseSet1 = float(len(gesamtListe1) / anzahlTestSets)
         groesseSet2 = float(len(gesamtListe2) / anzahlTestSets)
-        # um harte Setgrenzen zu verhindern, wird überlappend iteriert.
+        # Um harte Setgrenzen zu verhindern, wird überlappend iteriert.
         testSets =[]
         for i in range (2*anzahlTestSets):
             testSets.append (gesamtListe1[int(0.5*i*groesseSet1):int((0.5*i+1)*groesseSet1)] + gesamtListe2[int(0.5*i*groesseSet2):int((0.5*i+1)*groesseSet2)])
@@ -272,11 +288,14 @@ class Kostenfunktion():
         for tupel in tokenKombinationen:
             self.aehnlichkeitsmass.update({tupel:(levenshtein._cycled(tupel[0], tupel[1]))/(max(len(tupel[0]),len(tupel[1])))})        
         self.aehnlichkeitsmass = self._normiereKostenFunktion(self.aehnlichkeitsmass)
-
+        return self.aehnlichkeitsmass
+     
 class ASRKorrektur:
+    """Ersetzt den Text im ASR-Transkript durch die korrigierte Wortliste."""
     def _zeilentextErstellen(self, umbrueche, wortliste, asr):
         teile, start = [], 0
-        # die im ASR-Extrakt eingefügten Zeilenmarker verschieben die Positionen der Zeilenumbrüche. Dieser Umstand findet hier Berücksichtigung.
+        # Eingefügte Zeilenend-Marker verschieben die Indexpositionen. 
+        # Dies wird hier berücksichtigt.
         umbruecheModifiziert = []
         for u in umbrueche:
             umbruecheModifiziert.append (u-(umbrueche.index(u)+1))
