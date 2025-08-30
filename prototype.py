@@ -171,7 +171,7 @@ class Levenshtein:
     def berechneTransformationsmatrix (self, s1: Sequence[T], s2: Sequence[T], kostenfunktion: dict[tuple[T, T], float]):
         """Erstellt Transformationsmatrix zur Rekonstruktion der Editierschritte 
         (nicht, wie beim Levenshtein-Algorithmus üblich, Distanzwert)."""
-        STANDARD_ERSETZUNGSKOSTEN = 3   
+        STANDARD_ERSETZUNGSKOSTEN = 4
         # hoher Wert, um Ersetzungen von Begriffen, die sich in den zu vergleichenden 
         # Textdateien in unterschiedlichen Bereichen befinden, zu vermeiden.
         rows = len([c for c in s1 if c != "|"]) + 1
@@ -200,6 +200,7 @@ class Levenshtein:
                 if gleich: ersetzKosten = 0
                 else: 
                     ersetzKosten = kostenfunktion.get((s1[rSequenz], s2[c - 1]), STANDARD_ERSETZUNGSKOSTEN)
+                    #ersetzKosten = STANDARD_ERSETZUNGSKOSTEN
                 edit = prev[c - 1] + ersetzKosten
                 cur[c] = min(edit, deletion, insertion)
                 if cur[c] == edit:
@@ -263,8 +264,8 @@ class Kostenfunktion():
               
     def _erstelleTokenpaare(self, gesamtListe1, gesamtListe2):
         """Erzeugt die Tokenpaare, für die gewichtete Ersetzungskosten berechnet werden."""
-        MINGROESSE_TESTSET1 = 40   # abweichende Setgrößen werden im Rahmen der Evaltuation erprobt.
-        anzahlTestSets = int(len(gesamtListe1)/MINGROESSE_TESTSET1)
+        MIN_GROESSE_TESTSET_1 = 5   # abweichende Setgrößen werden im Rahmen der Evaltuation erprobt.
+        anzahlTestSets = int(len(gesamtListe1)/MIN_GROESSE_TESTSET_1)
         groesseSet1 = float(len(gesamtListe1) / anzahlTestSets)
         groesseSet2 = float(len(gesamtListe2) / anzahlTestSets)
         # Um harte Setgrenzen zu verhindern, wird überlappend iteriert.
